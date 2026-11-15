@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlexCare — Healthcare Shift Pool & Earnings Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        medical: {
+                            950: '#042f2e',
+                            900: '#134e4a',
+                            800: '#115e59',
+                            700: '#0f766e',
+                            600: '#0d9488',
+                            500: '#14b8a6',
+                            100: '#ccfbf1',
+                            50: '#f0fdfa',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar inside smartphone viewport */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Range slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #cbd5e1;
+            height: 0.45rem;
+            border-radius: 999px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -5px;
+            background-color: #0f766e;
+            height: 1.1rem;
+            width: 1.1rem;
+            border-radius: 999px;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(15, 118, 110, 0.4);
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.85); opacity: 0.8; }
+            70% { transform: scale(1.35); opacity: 0; }
+            100% { transform: scale(1.35); opacity: 0; }
+        }
+        .live-dot::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 9999px;
+            background-color: #10b981;
+            animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-200 min-h-screen flex flex-col items-center justify-center p-2 sm:p-6 font-sans text-slate-800 antialiased selection:bg-medical-600 selection:text-white">
+
+    <!-- Desktop Context Banner (Hidden on small mobile screens) -->
+    <div class="hidden md:flex items-center gap-3 mb-4 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-sm border border-slate-300/60 text-xs text-slate-600">
+        <span class="flex items-center gap-1.5 font-semibold text-medical-800">
+            <i data-lucide="smartphone" class="w-4 h-4 text-medical-600"></i>
+            FlexCare Interactive Prototype
+        </span>
+        <span class="text-slate-300">|</span>
+        <span>Switch specialties, claim shifts, and test the live Clock-In earnings simulator</span>
+    </div>
+
+    <!-- Smartphone Hardware Frame -->
+    <div class="relative w-full max-w-[405px] h-[820px] max-h-[94vh] bg-slate-900 rounded-[48px] p-[12px] shadow-[0_25px_70px_-15px_rgba(15,23,42,0.45)] border-[3px] border-slate-700/80 flex flex-col overflow-hidden">
+        
+        <!-- Dynamic Island / Speaker Notch -->
+        <div class="absolute top-[18px] left-1/2 -translate-x-1/2 w-28 h-6 bg-slate-950 rounded-full z-40 flex items-center justify-between px-3 pointer-events-none">
+            <div class="w-2.5 h-2.5 rounded-full bg-slate-800 border border-slate-700"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500/80"></div>
+        </div>
+
+        <!-- App Screen Container -->
+        <div class="relative flex-1 bg-slate-50 rounded-[36px] overflow-hidden flex flex-col">
+
+            <!-- Toast Notification Banner -->
+            <div id="toast" class="absolute top-12 left-4 right-4 z-50 transform -translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+                <div class="bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3">
+                    <div id="toast-icon" class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="toast-title" class="text-xs font-bold text-white truncate">Shift Claimed</p>
+                        <p id="toast-msg" class="text-[11px] text-slate-300 truncate">Added to your schedule</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOP CLINICAL HEADER -->
+            <header class="bg-gradient-to-br from-medical-900 via-medical-800 to-medical-700 text-white pt-10 pb-5 px-5 rounded-b-[28px] shadow-md shrink-0 z-20">
+                <!-- Status Bar Time & Icons -->
+                <div class="flex justify-between items-center text-[11px] font-semibold text-medical-100/90 mb-3 px-1">
+                    <span>08:37</span>
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="signal" class="w-3.5 h-3.5"></i>
+                        <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+                        <i data-lucide="battery-charging" class="w-4 h-4 text-emerald-300"></i>
+                    </div>
+                </div>
+
+                <!-- Brand + Specialty Switcher -->
+                <div class="flex items-center justify-between gap-2 mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-inner">
+                            <i data-lucide="heart-pulse" class="w-5 h-5 text-emerald-300"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <h1 class="text-base font-extrabold tracking-tight leading-none">FlexCare</h1>
+                                <span class="inline-flex items-center gap-0.5 bg-emerald-400/20 border border-emerald-300/30 text-emerald-200 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                                    <i data-lucide="badge-check" class="w-2.5 h-2.5"></i> Verified
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-medical-100/80 mt-0.5">Dr. Elena Rostova • EU-Med ID</p>
+                        </div>
+                    </div>
+
+                    <!-- Specialty Dropdown Selector -->
+                    <div class="relative">
+                        <select id="specialty-select" onchange="handleSpecialtyChange(this.value)" aria-label="Select Medical Specialty"
+                            class="appearance-none bg-medical-950/60 hover:bg-medical-950/80 text-white text-[11px] font-semibold pl-2.5 pr-7 py-2 rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition cursor-pointer">
+                            <option value="all">All Specialties</option>
+                            <option value="icu_nurse">ICU Nurse</option>
+                            <option value="general_nurse">General Nurse</option>
+                            <option value="radiologist">Radiologist</option>
+                            <option value="physiotherapist">Physiotherapist</option>
+                            <option value="paramedic">Paramedic</option>
+                        </select>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-medical-200 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- LIVE EARNINGS & HOURS DASHBOARD CARD -->
+                <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-3.5 shadow-inner">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-medium text-medical-100 flex items-center gap-1.5">
+                            <span class="relative inline-block w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
+                            Confirmed Earnings (Nov)
+                        </span>
+                        <span class="text-[10px] font-semibold bg-white/15 px-2 py-0.5 rounded-full text-emerald-200">
+                            <span id="header-hours">42.0</span> hrs logged
+                        </span>
+                    </div>
+                    
+                    <div class="flex items-baseline justify-between">
+                        <div class="text-2xl font-extrabold tracking-tight text-white">
+                            €<span id="header-confirmed">1,684.50</span>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-medical-100/80">Today's Potential</p>
+                            <p class="text-xs font-bold text-emerald-300">+€<span id="header-potential">342.00</span></p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- SCROLLABLE MAIN CONTENT AREA -->
+            <main id="main-scroll" class="flex-1 overflow-y-auto no-scrollbar px-4 pt-4 pb-24 space-y-4">
+
+                <!-- ==================== TAB 1: SHIFT POOL ==================== -->
+                <section id="tab-pool" class="space-y-3.5">
+                    <!-- Filter Controls Row -->
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex bg-slate-200/80 p-1 rounded-xl text-xs font-semibold">
+                            <button onclick="setDayFilter('all')" id="filter-all" class="px-3 py-1.5 rounded-lg bg-white text-medical-900 shadow-sm transition">
+                                All Week
+                            </button>
+                            <button onclick="setDayFilter('today')" id="filter-today" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+                                Today Only
+                            </button>
+                        </div>
+                        <span id="shift-count-badge" class="text-[11px] font-semibold text-slate-500 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200">
+                            5 shifts open
+                        </span>
+                    </div>
+
+                    <!-- Dynamic Shift Cards Container -->
+                    <div id="pool-list" class="space-y-3"></div>
+                </section>
+
+                <!-- ==================== TAB 2: MY SHIFTS & TIMER ==================== -->
+                <section id="tab-myshifts" class="hidden space-y-4">
+                    <!-- Active Live Shift Simulator Card -->
+                    <div id="active-timer-card" class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-medical-700 flex items-center gap-1.5">
+                                <i data-lucide="clock" class="w-4 h-4"></i> Live Shift Terminal
+                            </span>
+                            <span id="timer-status-pill" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                Ready to Clock In
+                            </span>
+                        </div>
+
+                        <div id="active-shift-details" class="mb-4">
+                            <!-- Populated dynamically -->
+                        </div>
+
+                        <!-- Live Ticking Readout -->
+                        <div class="bg-slate-900 text-white rounded-2xl p-4 mb-3.5 flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Elapsed Time (10x Sim)</p>
+                                <p id="live-clock-display" class="text-2xl font-mono font-bold tracking-tight text-white mt-0.5">00:00:00</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">Live Earned</p>
+                                <p class="text-2xl font-extrabold text-emerald-400 mt-0.5">€<span id="live-earned-display">0.00</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Clock In / Clock Out Action Button -->
+                        <button id="clock-action-btn" onclick="toggleClockSimulation()"
+                            class="w-full py-3.5 px-4 rounded-xl font-bold text-sm text-white bg-medical-700 hover:bg-medical-800 active:scale-[0.99] transition shadow-md flex items-center justify-center gap-2">
+                            <i data-lucide="log-in" class="w-4 h-4"></i>
+                            <span>Clock In via GPS Geofence</span>
+                        </button>
+                        <p class="text-[10px] text-center text-slate-400 mt-2">
+                            GPS Verified • Simulation runs at accelerated speed so you can test live payout accrual
+                        </p>
+                    </div>
+
+                    <!-- Claimed / Completed Shifts List -->
+                    <div>
+                        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5 px-1">Your Schedule & History</h2>
+                        <div id="my-shifts-list" class="space-y-2.5"></div>
+                    </div>
+                </section>
+
+                <!-- ==================== TAB 3: EARNINGS & CREDENTIALS ==================== -->
+                <section id="tab-earnings" class="hidden space-y-4">
+                    <!-- Earnings Breakdown Card -->
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-sm font-bold text-slate-800">November Pay Breakdown</h2>
+                            <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                Tax-Ready PDF
+                            </span>
+                        </div>
+
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between items-center py-1.5 border-b border-slate-100">
+                                <span class="text-slate-500">Base Clinical Hours (<span id="breakdown-hours">42.0</span>h)</span>
+                                <span class="font-bold text-slate-800">€<span id="breakdown-base">1,428.00</span></span>
+                            </div>
+                            <div class="flex justify-between items-center py-1.5 border-b border-slate-100">
+                                <span class="text-slate-500 flex items-center gap-1">
+                                    <i data-lucide="moon" class="w-3.5 h-3.5 text-indigo-500"></i> Night & Weekend Multipliers
+                                </span>
+                                <span class="font-bold text-emerald-600">+€<span id="breakdown-bonus">256.50</span></span>
+                            </div>
+                            <div class="flex justify-between items-center pt-1 text-sm">
+                                <span class="font-bold text-slate-800">Total Confirmed Payout</span>
+                                <span class="font-extrabold text-medical-800">€<span id="breakdown-total">1,684.50</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive "What-If" Pay Calculator -->
+                    <div class="bg-gradient-to-br from-medical-50 to-white rounded-2xl p-4 border border-medical-200/80 shadow-sm space-y-3.5">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-lg bg-medical-700 text-white flex items-center justify-center">
+                                    <i data-lucide="calculator" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-bold text-medical-950">"What-If" Earnings Simulator</h3>
+                                    <p class="text-[10px] text-slate-500">Plan extra shifts & bonus rates</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-500 block">Projected Extra</span>
+                                <span class="text-base font-extrabold text-medical-700">€<span id="calc-result">630.00</span></span>
+                            </div>
+                        </div>
+
+                        <!-- Hours Slider -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-600">Extra Hours / Week</span>
+                                <span class="text-medical-800"><span id="calc-hours-val">15</span> hrs</span>
+                            </div>
+                            <input type="range" id="calc-hours" min="4" max="40" step="1" value="15" oninput="updateCalculator()" class="w-full">
+                        </div>
+
+                        <!-- Hourly Rate Slider -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-600">Hourly Rate (incl. Bonus)</span>
+                                <span class="text-medical-800">€<span id="calc-rate-val">42</span>/hr</span>
+                            </div>
+                            <input type="range" id="calc-rate" min="28" max="85" step="1" value="42" oninput="updateCalculator()" class="w-full">
+                        </div>
+                    </div>
+
+                    <!-- Digital Credential Wallet -->
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i> Digital Credential Wallet
+                            </h3>
+                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">100% Compliant</span>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-medical-100 text-medical-700 flex items-center justify-center">
+                                        <i data-lucide="award" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-800">State Medical License (Approbation)</p>
+                                        <p class="text-[10px] text-slate-500">Verified • Valid until 2029</p>
+                                    </div>
+                                </div>
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                            </div>
+
+                            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-medical-100 text-medical-700 flex items-center justify-center">
+                                        <i data-lucide="syringe" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-800">Hospital Hygiene & Immunization</p>
+                                        <p class="text-[10px] text-slate-500">IfSG §23a Certified</p>
+                                    </div>
+                                </div>
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                            </div>
+
+                            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-medical-100 text-medical-700 flex items-center justify-center">
+                                        <i data-lucide="id-card" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-800">EU Identity & Liability Insurance</p>
+                                        <p class="text-[10px] text-slate-500">Berufshaftpflicht Active</p>
+                                    </div>
+                                </div>
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500 shrink-0"></i>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+
+            <!-- BOTTOM NAVIGATION BAR -->
+            <nav class="absolute bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 pt-2 pb-5 flex items-center justify-around z-30">
+                <button onclick="switchTab('pool')" id="nav-pool" class="flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-medical-700 font-bold transition">
+                    <i data-lucide="search" class="w-5 h-5"></i>
+                    <span class="text-[10px]">Shift Pool</span>
+                </button>
+                <button onclick="switchTab('myshifts')" id="nav-myshifts" class="relative flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-600 font-medium transition">
+                    <span id="myshifts-badge" class="absolute top-0.5 right-3 w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center">1</span>
+                    <i data-lucide="calendar-clock" class="w-5 h-5"></i>
+                    <span class="text-[10px]">My Shifts & Timer</span>
+                </button>
+                <button onclick="switchTab('earnings')" id="nav-earnings" class="flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-slate-600 font-medium transition">
+                    <i data-lucide="wallet" class="w-5 h-5"></i>
+                    <span class="text-[10px]">Earnings & ID</span>
+                </button>
+            </nav>
+
+            <!-- Home Indicator Bar -->
+            <div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-800/30 rounded-full z-40 pointer-events-none"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- APPLICATION STATE ---
+        const state = {
+            selectedSpecialty: 'all',
+            dayFilter: 'all',
+            activeTab: 'pool',
+            confirmedEarnings: 1684.50,
+            confirmedBase: 1428.00,
+            confirmedBonus: 256.50,
+            totalHoursWorked: 42.0,
+            timerRunning: false,
+            timerSeconds: 0,
+            timerInterval: null,
+            activeShiftId: 101,
+            shifts: [
+                {
+                    id: 1,
+                    hospital: 'Universitätsklinikum Bonn',
+                    department: 'Cardiothoracic ICU',
+                    specialty: 'icu_nurse',
+                    specialtyLabel: 'ICU Nurse',
+                    when: 'Today',
+                    isToday: true,
+                    timeRange: '14:00 – 22:00',
+                    hours: 8,
+                    baseRate: 38.00,
+                    multiplier: 1.25,
+                    bonusLabel: '+25% Evening/Night',
+                    distance: '2.4 km',
+                    urgent: true,
+                    status: 'open'
+                },
+                {
+                    id: 2,
+                    hospital: 'St. Marien Hospital',
+                    department: 'Diagnostic Radiology (CT/MRI)',
+                    specialty: 'radiologist',
+                    specialtyLabel: 'Radiologist',
+                    when: 'Today',
+                    isToday: true,
+                    timeRange: '16:00 – 22:00',
+                    hours: 6,
+                    baseRate: 62.00,
+                    multiplier: 1.20,
+                    bonusLabel: '+20% Late Shift',
+                    distance: '4.1 km',
+                    urgent: false,
+                    status: 'open'
+                },
+                {
+                    id: 3,
+                    hospital: 'Rhein-Klinik Bad Honnef',
+                    department: 'Orthopedic Rehabilitation',
+                    specialty: 'physiotherapist',
+                    specialtyLabel: 'Physiotherapist',
+                    when: 'Tomorrow',
+                    isToday: false,
+                    timeRange: '08:00 – 16:00',
+                    hours: 8,
+                    baseRate: 34.00,
+                    multiplier: 1.00,
+                    bonusLabel: 'Standard Day Rate',
+                    distance: '6.8 km',
+                    urgent: false,
+                    status: 'open'
+                },
+                {
+                    id: 4,
+                    hospital: 'Evangelisches Waldkrankenhaus',
+                    department: 'General Surgery Ward B',
+                    specialty: 'general_nurse',
+                    specialtyLabel: 'General Nurse',
+                    when: 'Today',
+                    isToday: true,
+                    timeRange: '21:30 – 06:00',
+                    hours: 8.5,
+                    baseRate: 33.00,
+                    multiplier: 1.35,
+                    bonusLabel: '+35% Night Bonus',
+                    distance: '3.7 km',
+                    urgent: true,
+                    status: 'open'
+                },
+                {
+                    id: 5,
+                    hospital: 'DRK Rettungsdienst Rhein-Sieg',
+                    department: 'Emergency Response Unit',
+                    specialty: 'paramedic',
+                    specialtyLabel: 'Paramedic',
+                    when: 'Thu, Nov 19',
+                    isToday: false,
+                    timeRange: '07:00 – 19:00',
+                    hours: 12,
+                    baseRate: 36.00,
+                    multiplier: 1.15,
+                    bonusLabel: '+15% 12h Shift Bonus',
+                    distance: '5.2 km',
+                    urgent: false,
+                    status: 'open'
+                },
+                {
+                    id: 101,
+                    hospital: 'St. Josef Hospital',
+                    department: 'Emergency & Trauma ICU',
+                    specialty: 'icu_nurse',
+                    specialtyLabel: 'ICU Nurse',
+                    when: 'Today (Active)',
+                    isToday: true,
+                    timeRange: '08:30 – 16:30',
+                    hours: 8,
+                    baseRate: 40.00,
+                    multiplier: 1.15,
+                    bonusLabel: '+15% Weekend Bonus',
+                    distance: '1.8 km',
+                    urgent: false,
+                    status: 'claimed'
+                }
+            ]
+        };
+
+        // --- HELPER CALCULATIONS ---
+        function calculateShiftTotal(shift) {
+            return shift.hours * shift.baseRate * shift.multiplier;
+        }
+
+        function formatMoney(val) {
+            return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // --- TOAST NOTIFICATIONS ---
+        let toastTimeout;
+        function showToast(title, msg, isSuccess = true) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-msg').textContent = msg;
+            toast.classList.remove('-translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('-translate-y-24', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 3000);
+        }
+
+        // --- HEADER & SUMMARY UPDATES ---
+        function updateDashboardSummary() {
+            const openShifts = state.shifts.filter(s => s.status === 'open' && s.isToday && (state.selectedSpecialty === 'all' || s.specialty === state.selectedSpecialty));
+            const todayPotential = openShifts.reduce((acc, s) => acc + calculateShiftTotal(s), 0);
+
+            document.getElementById('header-confirmed').textContent = formatMoney(state.confirmedEarnings);
+            document.getElementById('header-hours').textContent = state.totalHoursWorked.toFixed(1);
+            document.getElementById('header-potential').textContent = formatMoney(todayPotential);
+
+            // Earnings Tab Breakdown
+            document.getElementById('breakdown-hours').textContent = state.totalHoursWorked.toFixed(1);
+            document.getElementById('breakdown-base').textContent = formatMoney(state.confirmedBase);
+            document.getElementById('breakdown-bonus').textContent = formatMoney(state.confirmedBonus);
+            document.getElementById('breakdown-total').textContent = formatMoney(state.confirmedEarnings);
+
+            // Claimed badge count
+            const claimedCount = state.shifts.filter(s => s.status === 'claimed').length;
+            const badge = document.getElementById('myshifts-badge');
+            badge.textContent = claimedCount;
+            badge.style.display = claimedCount > 0 ? 'flex' : 'none';
+        }
+
+        // --- RENDER SHIFT POOL ---
+        function renderShiftPool() {
+            const container = document.getElementById('pool-list');
+            const filtered = state.shifts.filter(s => {
+                if (s.status !== 'open') return false;
+                if (state.selectedSpecialty !== 'all' && s.specialty !== state.selectedSpecialty) return false;
+                if (state.dayFilter === 'today' && !s.isToday) return false;
+                return true;
+            });
+
+            document.getElementById('shift-count-badge').textContent = `${filtered.length} shift${filtered.length === 1 ? '' : 's'} open`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl p-6 text-center border border-slate-200">
+                        <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                            <i data-lucide="calendar-off" class="w-6 h-6"></i>
+                        </div>
+                        <p class="text-sm font-bold text-slate-700">No open shifts match filter</p>
+                        <p class="text-xs text-slate-500 mt-1">Try switching to "All Specialties" or "All Week".</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = filtered.map(shift => {
+                const total = calculateShiftTotal(shift);
+                const effectiveRate = (shift.baseRate * shift.multiplier).toFixed(2);
+                return `
+                    <div class="bg-white rounded-2xl p-4 border ${shift.urgent ? 'border-amber-300/90 ring-1 ring-amber-200/50' : 'border-slate-200'} shadow-sm hover:shadow-md transition">
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-medical-50 text-medical-800 border border-medical-200/70">
+                                        ${shift.specialtyLabel}
+                                    </span>
+                                    ${shift.urgent ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 flex items-center gap-0.5"><i data-lucide="zap" class="w-2.5 h-2.5"></i> Urgent</span>` : ''}
+                                </div>
+                                <h3 class="text-sm font-bold text-slate-900 mt-1.5 leading-snug">${shift.hospital}</h3>
+                                <p class="text-xs text-slate-500">${shift.department}</p>
+                            </div>
+                            <div class="text-right shrink-0 bg-emerald-50/90 border border-emerald-200/70 px-2.5 py-1.5 rounded-xl">
+                                <p class="text-[10px] font-semibold text-emerald-700">Total Payout</p>
+                                <p class="text-base font-extrabold text-emerald-800">€${formatMoney(total)}</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl my-3 border border-slate-100">
+                            <div class="flex items-center gap-1.5">
+                                <i data-lucide="clock" class="w-3.5 h-3.5 text-medical-600 shrink-0"></i>
+                                <span class="font-medium">${shift.when} • ${shift.timeRange} (${shift.hours}h)</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 justify-end">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+                                <span>${shift.distance}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 col-span-2 pt-1 border-t border-slate-200/60">
+                                <i data-lucide="trending-up" class="w-3.5 h-3.5 text-emerald-600 shrink-0"></i>
+                                <span>€${shift.baseRate.toFixed(2)}/hr base • <strong class="text-medical-800">${shift.bonusLabel} (€${effectiveRate}/hr)</strong></span>
+                            </div>
+                        </div>
+
+                        <button onclick="claimShift(${shift.id})"
+                            class="w-full py-2.5 px-4 rounded-xl bg-medical-700 hover:bg-medical-800 active:scale-[0.99] text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5">
+                            <span>Claim Shift</span>
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // --- CLAIM SHIFT ACTION ---
+        function claimShift(id) {
+            const shift = state.shifts.find(s => s.id === id);
+            if (!shift) return;
+
+            shift.status = 'claimed';
+            state.activeShiftId = shift.id;
+
+            const total = calculateShiftTotal(shift);
+            showToast('Shift Claimed!', `${shift.hospital} (+€${formatMoney(total)}) added to My Shifts.`);
+
+            updateDashboardSummary();
+            renderShiftPool();
+            renderMyShifts();
+        }
+
+        // --- RENDER MY SHIFTS & ACTIVE TIMER ---
+        function renderMyShifts() {
+            const claimed = state.shifts.filter(s => s.status === 'claimed');
+            const completed = state.shifts.filter(s => s.status === 'completed');
+
+            // Select active shift for the timer card
+            let activeShift = claimed.find(s => s.id === state.activeShiftId) || claimed[0];
+            const activeDetailsEl = document.getElementById('active-shift-details');
+            const clockBtn = document.getElementById('clock-action-btn');
+
+            if (activeShift) {
+                state.activeShiftId = activeShift.id;
+                const effectiveRate = (activeShift.baseRate * activeShift.multiplier).toFixed(2);
+                activeDetailsEl.innerHTML = `
+                    <div class="flex items-center justify-between bg-medical-50/80 border border-medical-200/70 p-3 rounded-xl">
+                        <div>
+                            <p class="text-xs font-extrabold text-medical-950">${activeShift.hospital}</p>
+                            <p class="text-[11px] text-medical-800">${activeShift.department} • ${activeShift.timeRange}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-extrabold text-medical-700">€${effectiveRate}/hr</span>
+                            <span class="block text-[10px] text-slate-500">${activeShift.hours}h shift</span>
+                        </div>
+                    </div>
+                `;
+                clockBtn.disabled = false;
+                clockBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                activeDetailsEl.innerHTML = `
+                    <div class="text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        <p class="text-xs font-semibold text-slate-600">No active claimed shift selected</p>
+                        <p class="text-[11px] text-slate-400">Claim a shift from the Shift Pool to clock in</p>
+                    </div>
+                `;
+                clockBtn.disabled = true;
+                clockBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            // Render list of claimed & completed shifts
+            const listEl = document.getElementById('my-shifts-list');
+            const allMyShifts = [...claimed, ...completed];
+
+            listEl.innerHTML = allMyShifts.map(s => {
+                const total = calculateShiftTotal(s);
+                const isDone = s.status === 'completed';
+                return `
+                    <div class="bg-white rounded-2xl p-3.5 border ${isDone ? 'border-slate-200 opacity-85' : 'border-medical-200'} shadow-sm flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                    ${isDone ? 'Completed & Paid' : 'Scheduled'}
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-medium">${s.when}</span>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 truncate mt-1">${s.hospital}</p>
+                            <p class="text-[11px] text-slate-500 truncate">${s.specialtyLabel} • ${s.hours}h (${s.timeRange})</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-sm font-extrabold ${isDone ? 'text-emerald-600' : 'text-slate-800'}">€${formatMoney(total)}</p>
+                            ${!isDone && s.id !== state.activeShiftId ? `<button onclick="selectActiveShift(${s.id})" class="text-[10px] font-bold text-medical-700 underline mt-0.5">Select for Timer</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function selectActiveShift(id) {
+            if (state.timerRunning) {
+                showToast('Shift in Progress', 'Clock out of your current shift first.');
+                return;
+            }
+            state.activeShiftId = id;
+            renderMyShifts();
+        }
+
+        // --- LIVE CLOCK-IN / CLOCK-OUT SIMULATION ---
+        function toggleClockSimulation() {
+            const activeShift = state.shifts.find(s => s.id === state.activeShiftId && s.status === 'claimed');
+            if (!activeShift) return;
+
+            const btn = document.getElementById('clock-action-btn');
+            const pill = document.getElementById('timer-status-pill');
+
+            if (!state.timerRunning) {
+                // START SHIFT
+                state.timerRunning = true;
+                state.timerSeconds = 0;
+
+                btn.classList.remove('bg-medical-700', 'hover:bg-medical-800');
+                btn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+                btn.innerHTML = `<i data-lucide="log-out" class="w-4 h-4"></i><span>Clock Out & Complete Shift</span>`;
+
+                pill.textContent = 'On Shift • Live Tracking';
+                pill.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+
+                showToast('Clocked In!', `GPS verified at ${activeShift.hospital}`);
+                lucide.createIcons();
+
+                // Tick every 200ms simulating accelerated minutes so earnings visibly grow
+                const effectiveHourlyRate = activeShift.baseRate * activeShift.multiplier;
+                state.timerInterval = setInterval(() => {
+                    state.timerSeconds += 36; // +36 simulated seconds per 200ms (3 mins/sec)
+                    const hrs = Math.floor(state.timerSeconds / 3600);
+                    const mins = Math.floor((state.timerSeconds % 3600) / 60);
+                    const secs = state.timerSeconds % 60;
+
+                    document.getElementById('live-clock-display').textContent =
+                        `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+                    const accrued = (state.timerSeconds / 3600) * effectiveHourlyRate;
+                    document.getElementById('live-earned-display').textContent = formatMoney(accrued);
+                }, 200);
+
+            } else {
+                // CLOCK OUT & COMPLETE SHIFT
+                clearInterval(state.timerInterval);
+                state.timerRunning = false;
+
+                // Credit full shift payout (or minimum simulated amount if clocked out immediately)
+                const fullPayout = calculateShiftTotal(activeShift);
+                const basePart = activeShift.hours * activeShift.baseRate;
+                const bonusPart = fullPayout - basePart;
+
+                activeShift.status = 'completed';
+                state.confirmedEarnings += fullPayout;
+                state.confirmedBase += basePart;
+                state.confirmedBonus += bonusPart;
+                state.totalHoursWorked += activeShift.hours;
+
+                // Reset UI
+                state.timerSeconds = 0;
+                document.getElementById('live-clock-display').textContent = '00:00:00';
+                document.getElementById('live-earned-display').textContent = '0.00';
+
+                btn.classList.remove('bg-rose-600', 'hover:bg-rose-700');
+                btn.classList.add('bg-medical-700', 'hover:bg-medical-800');
+                btn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i><span>Clock In via GPS Geofence</span>`;
+
+                pill.textContent = 'Ready to Clock In';
+                pill.className = 'text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600';
+
+                showToast('Shift Completed!', `+€${formatMoney(fullPayout)} added to Confirmed Earnings!`);
+
+                updateDashboardSummary();
+                renderMyShifts();
+            }
+        }
+
+        // --- FILTERS & NAVIGATION ---
+        function handleSpecialtyChange(val) {
+            state.selectedSpecialty = val;
+            updateDashboardSummary();
+            renderShiftPool();
+        }
+
+        function setDayFilter(filter) {
+            state.dayFilter = filter;
+            const btnAll = document.getElementById('filter-all');
+            const btnToday = document.getElementById('filter-today');
+
+            if (filter === 'all') {
+                btnAll.className = 'px-3 py-1.5 rounded-lg bg-white text-medical-900 shadow-sm transition';
+                btnToday.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+            } else {
+                btnToday.className = 'px-3 py-1.5 rounded-lg bg-white text-medical-900 shadow-sm transition';
+                btnAll.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+            }
+            renderShiftPool();
+        }
+
+        function switchTab(tab) {
+            state.activeTab = tab;
+            ['pool', 'myshifts', 'earnings'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (t === tab) {
+                    navBtn.classList.remove('text-slate-400', 'font-medium');
+                    navBtn.classList.add('text-medical-700', 'font-bold');
+                } else {
+                    navBtn.classList.add('text-slate-400', 'font-medium');
+                    navBtn.classList.remove('text-medical-700', 'font-bold');
+                }
+            });
+            document.getElementById('main-scroll').scrollTop = 0;
+        }
+
+        // --- WHAT-IF EARNINGS CALCULATOR ---
+        function updateCalculator() {
+            const hrs = parseInt(document.getElementById('calc-hours').value, 10);
+            const rate = parseInt(document.getElementById('calc-rate').value, 10);
+            document.getElementById('calc-hours-val').textContent = hrs;
+            document.getElementById('calc-rate-val').textContent = rate;
+            document.getElementById('calc-result').textContent = formatMoney(hrs * rate);
+        }
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            updateDashboardSummary();
+            renderShiftPool();
+            renderMyShifts();
+            updateCalculator();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
